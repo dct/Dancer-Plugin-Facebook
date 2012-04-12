@@ -21,7 +21,20 @@ Dancer::Plugin::Facebook is a simple shim taking the repetitious
 scut-work out of using Facebook::Graph from within a Dancer
 application.
 
+=head1 CONFIGURATION
 
+Your L<Dancer> config.yml file C<plugins> section should look something like
+this.
+
+  plugins:
+    Facebook:
+      registration:
+        postback: 'https://example.com/facebook/postback'
+        app_id: XXXXXXXXXXXXXXX
+        secret: XXXXXXXXXXXXXXX
+
+All keys under the C<registration> section in the config are passed directly
+on to the C<new()> method of L<Facebook::Graph>.
 
 =cut
 
@@ -49,9 +62,11 @@ Please report any bugs via e-mail.
 
 =head1 SEE ALSO
 
-Dancer - L<Dancer>
+L<Dancer>
 
-Facebook::Graph - L<Facebook::Graph>
+L<Facebook::Graph>
+
+L<Dancer::Plugin>
 
 =cut
 
