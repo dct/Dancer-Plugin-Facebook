@@ -4,7 +4,7 @@ use Test::More;
 use Dancer::Test appdir => '..';
 use Dancer qw{:tests};
 
-plan ($ENV{TESTING_APP_ID} and $ENV{TESTING_SECRET} ? (tests => 5) : (skip_all => 'TESTING_APP_ID and TESTING_SECRET both need to be set'));
+plan (($ENV{TESTING_APP_ID} and $ENV{TESTING_SECRET}) ? (tests => 5) : (skip_all => 'TESTING_APP_ID and TESTING_SECRET both need to be set'));
 
 set errors => 1;
 set log => "debug";
