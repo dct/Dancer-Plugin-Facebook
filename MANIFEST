@@ -6,6 +6,7 @@ Makefile.PL
 README
 dist.ini
 lib/Dancer/Plugin/Facebook.pm
-t/basic.t
+t/application.t
+t/auth.t
 t/release-pod-coverage.t
 t/release-pod-syntax.t
