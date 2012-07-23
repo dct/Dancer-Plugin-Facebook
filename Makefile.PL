@@ -9,13 +9,11 @@ use ExtUtils::MakeMaker 6.30;
 
 
 my %WriteMakefileArgs = (
-  "ABSTRACT" => "Plugin linking Dancer with Facebook::Graph",
+  "ABSTRACT" => "Manage Facebook interaction within Dancer applications",
   "AUTHOR" => "Michael Alan Dorman <mdorman\@ironicdesign.com>",
   "BUILD_REQUIRES" => {
     "Dancer::Test" => 0,
-    "Test::More" => 0,
-    "strict" => 0,
-    "warnings" => 0
+    "Test::More" => 0
   },
   "CONFIGURE_REQUIRES" => {
     "ExtUtils::MakeMaker" => "6.30"
@@ -26,10 +24,11 @@ my %WriteMakefileArgs = (
   "NAME" => "Dancer::Plugin::Facebook",
   "PREREQ_PM" => {
     "Dancer" => 0,
+    "Dancer::Hook" => 0,
     "Dancer::Plugin" => 0,
     "Facebook::Graph" => 0
   },
-  "VERSION" => "0.001",
+  "VERSION" => "0.900",
   "test" => {
     "TESTS" => "t/*.t"
   }
