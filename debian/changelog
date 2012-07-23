@@ -1,3 +1,9 @@
+dancer-plugin-facebook (0.900-1) unstable; urgency=low
+
+  * New release
+
+ -- Michael Alan Dorman <mdorman@ironicdesign.com>  Mon, 23 Jul 2012 09:42:26 -0400
+
 dancer-plugin-facebook (0.001-1) unstable; urgency=low
 
   * Initial Release.
