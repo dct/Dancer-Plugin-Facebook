@@ -13,7 +13,9 @@ my %WriteMakefileArgs = (
   "AUTHOR" => "Michael Alan Dorman <mdorman\@ironicdesign.com>",
   "BUILD_REQUIRES" => {
     "Dancer::Test" => 0,
-    "Test::More" => 0
+    "Test::More" => 0,
+    "strict" => 0,
+    "warnings" => 0
   },
   "CONFIGURE_REQUIRES" => {
     "ExtUtils::MakeMaker" => "6.30"
@@ -26,9 +28,10 @@ my %WriteMakefileArgs = (
     "Dancer" => 0,
     "Dancer::Hook" => 0,
     "Dancer::Plugin" => 0,
-    "Facebook::Graph" => 0
+    "Facebook::Graph" => 0,
+    "Try::Tiny" => 0
   },
-  "VERSION" => "0.900",
+  "VERSION" => "0.990",
   "test" => {
     "TESTS" => "t/*.t"
   }

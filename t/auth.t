@@ -7,8 +7,6 @@ use Dancer qw{:tests};
 plan (($ENV{TESTING_APP_ID} and $ENV{TESTING_SECRET}) ? (tests => 5) : (skip_all => 'TESTING_APP_ID and TESTING_SECRET both need to be set'));
 
 set errors => 1;
-set log => "debug";
-set log_path => ".";
 set logger => "file";
 set warnings => 1;
 debug "Testing auth case";
