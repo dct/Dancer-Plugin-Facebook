@@ -1,3 +1,10 @@
+dancer-plugin-facebook (0.990-1) unstable; urgency=low
+
+  * Make sure we depend on appropriate version of Dancer.
+  * New release
+
+ -- Michael Alan Dorman <mdorman@ironicdesign.com>  Mon, 24 Sep 2012 11:47:10 -0400
+
 dancer-plugin-facebook (0.900-1) unstable; urgency=low
 
   * New release
