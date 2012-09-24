@@ -121,6 +121,30 @@ C<fb_redirect> and C<fb_postback> functions to create your routes:
 Please note, you do need to specify the postback URL as a parameter to
 C<fb_postback>.  It's ugly, but unavoidable as far as I can tell.
 
+=head2 Authenticating users (handling redirection when using AJAX)
+
+If you are using AJAX to interoperate with your application, returning
+a 30X redirect code to push the user to Facebook may not work the way
+you expect.  So, if necessary, you can just get back the appropriate
+URL, and send that to your client in some way it will interpret
+properly.
+
+  use Dancer;
+  use Dancer::Plugin::Facebook;
+
+  setup_fb;
+
+  post '/auth' => sub {
+    ... do some stuff to decide if you are supposed to even hit fb ...
+    # hypothetically encoded as JSON and parsed by client app
+    return {redirect => fb_redirect_url};
+  };
+
+  get '/auth/facebook/postback' => fb_postback '/auth/facebook/postback';
+
+Please note, you do need to specify the postback URL as a parameter to
+C<fb_postback>.  It's ugly, but unavoidable as far as I can tell.
+
 =head2 Acting on a user's behalf (while logged in)
 
 If you wish for your application to be able to access Facebook on
@@ -197,7 +221,7 @@ permissions|http://developers.facebook.com/docs/authentication/permissions>.
 
 =cut
 
-my (%config, $fb);
+my (%config, $fb, $redirect);
 
 sub _get_fb {
     debug "Getting fb object [", $fb // "undef", "]";
@@ -223,13 +247,20 @@ sub _get_fb {
     };
 }
 
+sub _get_fb_redirect_url () {
+    $redirect ||= do {
+        my $settings = plugin_setting;
+        debug "Settings are ", $settings;
+        my @permissions = ref $settings->{permissions} eq "ARRAY" ? @{$settings->{permissions}} : ();
+        _get_fb->authorize->extend_permissions (@permissions)->uri_as_string;
+    };
+}
+
 sub _do_fb_redirect () {
-    my $settings = plugin_setting;
-    debug "Settings are ", $settings;
-    # Make sure the permissions settings exist
-    my @permissions = ref $settings->{permissions} eq "ARRAY" ? @{$settings->{permissions}} : ();
+    my $url = _get_fb_redirect_url;
     sub {
-        redirect _get_fb->authorize->extend_permissions (@permissions)->uri_as_string;
+        debug "Redirecting to $url";
+        redirect $url, 303;
     }
 }
 
@@ -325,6 +356,7 @@ register setup_fb => sub (;$) {
 
 register fb => \&_get_fb;
 register fb_redirect => \&_do_fb_redirect;
+register fb_redirect_url => \&_get_fb_redirect_url;
 register fb_postback => \&_do_fb_postback;
 register_plugin;
 
