@@ -5,6 +5,8 @@ author:
 build_requires:
   Dancer::Test: 0
   Test::More: 0
+  strict: 0
+  warnings: 0
 configure_requires:
   ExtUtils::MakeMaker: 6.30
 dynamic_config: 0
@@ -19,4 +21,5 @@ requires:
   Dancer::Hook: 0
   Dancer::Plugin: 0
   Facebook::Graph: 0
-version: 0.900
+  Try::Tiny: 0
+version: 0.990
