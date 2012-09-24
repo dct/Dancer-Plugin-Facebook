@@ -245,7 +245,7 @@ sub _do_fb_postback ($) {
     # first time, which will be within a route handler, we can sub
     # in the full URL, which is what FB actually needs
     die "You must give me the postback URL when calling fb_postback" unless ($url);
-    $config{raw_postback} = "$url/postback";
+    $config{raw_postback} = $url;
 
     # This hook will get called when we successfully authenticate and have
     # put the token in the session, so the application developer can
