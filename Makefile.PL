@@ -31,7 +31,7 @@ my %WriteMakefileArgs = (
     "Facebook::Graph" => 0,
     "Try::Tiny" => 0
   },
-  "VERSION" => "0.990",
+  "VERSION" => "0.991",
   "test" => {
     "TESTS" => "t/*.t"
   }

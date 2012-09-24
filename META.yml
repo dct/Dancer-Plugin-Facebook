@@ -22,4 +22,4 @@ requires:
   Dancer::Plugin: 0
   Facebook::Graph: 0
   Try::Tiny: 0
-version: 0.990
+version: 0.991
