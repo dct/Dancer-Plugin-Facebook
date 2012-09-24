@@ -3,7 +3,7 @@ Section: perl
 Priority: optional
 Maintainer: Michael Alan Dorman <mdorman@ironicdesign.com>
 Build-Depends: debhelper (>= 8)
-Build-Depends-Indep: libdancer-perl,
+Build-Depends-Indep: libdancer-perl (>= 1.3100),
  libfacebook-graph-perl,
  perl-modules (>= 5.8.8)
 Standards-Version: 3.9.3
@@ -12,7 +12,7 @@ Homepage: http://search.cpan.org/dist/Dancer-Plugin-Facebook/
 Package: libdancer-plugin-facebook-perl
 Architecture: all
 Depends: ${misc:Depends}, ${perl:Depends},
- libdancer-perl,
+ libdancer-perl (>= 1.3100),
  libfacebook-graph-perl
 Description: Plugin linking Dancer with Facebook::Graph
  Dancer::Plugin::Facebook is a simple shim taking the repetitious scut-work
