@@ -7,8 +7,6 @@ use Dancer qw{:tests};
 plan tests => 5;
 
 set errors => 1;
-set log => "debug";
-set log_path => ".";
 set logger => "file";
 set warnings => 1;
 debug "Testing non-auth case";

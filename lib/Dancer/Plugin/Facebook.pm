@@ -5,13 +5,14 @@ use Dancer qw{:syntax};
 use Dancer::Hook;
 use Dancer::Plugin;
 use Facebook::Graph;
+use Try::Tiny;
 
 =head1 SYNOPSIS
 
   use Dancer;
   use Dancer::Plugin::Facebook;
 
-  setup_fb;
+  setup_fb '/auth/facebook';
 
   get '/' => sub {
     fb->fetch ('16665510298')->{name};
@@ -19,8 +20,8 @@ use Facebook::Graph;
 
 =head1 DESCRIPTION
 
-Dancer::Plugin::Facebook is intended to simplify using Facebook::Graph
-from within a Dancer application.
+C<Dancer::Plugin::Facebook> is intended to simplify using
+C<Facebook::Graph> from within a Dancer application.
 
 It will:
 
@@ -28,30 +29,32 @@ It will:
 
 =item manage the lifecycle of the Facebook::Graph object
 
-The Plugin goes to great lengths to only create the Facebook::Graph
-object when needed, and tries hard to cache it as long as it applies.
-So you can use the fb object repeatedly during a request, even in
-different handlers, and be sure that it's not being rebuilt
-needlessly.
+The plugin goes to great lengths to only create the C<Facebook::Graph>
+object when needed, and tries hard to cache it for as long as it it is
+valid, so you can use the fb object repeatedly during a request, even
+in different handlers, without it being rebuilt needlessly.
 
 =item store your applications registration information in a single place
 
 Though it's not required that you have an registered app, if you do,
-you need only record the app_id and secret in one place.
+you need only record the C<app_id> and C<secret> in one place.
 
 =item automatically create routes for handling authentication
 
-If you pass an path to the setup_fb routine, the plugin will create
+If you pass a path to the C<setup_fb> routine, the plugin will create
 the routes necessary to support authentication in that location.
 
 =item automatically manage user authentication tokens
 
 It will transparently manage them through the user session for you,
 collecting them when the user authenticates, and making sure that they
-are used when creating the Facebook::Graph object if they're present.
+are used when creating the C<Facebook::Graph> object if they're present.
 
-There is also a hook available you can use to retrieve and store the
-access_token when it is set.
+There is also a hook available (C<fb_access_token_available>) you can
+use to retrieve and store the C<access_token> for offline use when it
+is set.  Then, simply store the C<access_token> in
+C<session->{auth}->{facebook}> and the C<fb> object will automatically
+pick it up on each request.
 
 =back
 
@@ -59,44 +62,105 @@ access_token when it is set.
 
 =head2 Basic usage
 
-Load the module into your dancer application as you normally would:
+At its absolute most basic usage, you can simply load the module into
+your dancer application:
 
   use Dancer;
   use Dancer::Plugin::Facebook;
 
-This alone will configure the absolute bare minimum functionality,
-allowing you to make requests to Facebook's API for public
-information.
+This will configure the absolute bare minimum functionality, allowing
+you to make requests to Facebook's API for public information and
+nothing else.
 
 =head2 Registered application
 
-If you have registered an application with Facebook, you should
-configure the module to use the relevant C<Application ID> and
-C<Application Secret> (see L<CONFIGURATION> for details), and then
-call C<setup_fb> within your application, like so:
+If you have registered an application with Facebook, you will need to
+configure the module to use the relevant C<app_id> and C<secret> (see
+L<CONFIGURATION> for details), and you will need to call the setup_fb
+routine:
 
   use Dancer;
   use Dancer::Plugin::Facebook;
   setup_fb;
 
-=head2 Authenticating users
+In all other respects, the usage is the same as the basic usage.
 
-If you wish for your application to be able to authenticate users
-using Facebook, you need to specify a point where the necessary web
-routes can be mounted when you call C<setup_fb>, like so:
+=head2 Authenticating users (simple)
+
+If you're using Facebook for authentication, you may specify a point
+where the necessary web routes can be mounted when you call
+C<setup_fb>, like so:
 
   use Dancer;
   use Dancer::Plugin::Facebook;
   setup_fb '/auth/facebook';
 
-=head2 Acting on a user's behalf
+You should configure the module know where to redirect the user in the
+event of success or failure by configuring the C<landing> parameters
+(see L<CONFIGURATION> for details).
 
-If you wish for your application to be able to conncect to Facebook on
-behalf of a particular user, you need to additionally configure the
-permissions the application requires (see L<CONFIGURATION> for
-details).  Doing so implies that you will be L<Authenticating users>
-as well; if you did not specify a mounting point when you called
-C<setup_fb>, it will default to C</auth/facebook>.
+To authenticate a user, simply redirect them to C</auth/facebook>, and
+when the user has been authenticated with Facebook, they will be
+redirected to C<landing/success> (which is C</> by default).
+
+=head2 Authenticating users (more configurable URLs)
+
+If you absolutely need to set specific URLs for the redirection and
+postback pages, you can do this by setting up the routes yourself.
+
+Do not specify a URL when calling C<setup_fb>, and then use the
+C<fb_redirect> and C<fb_postback> functions to create your routes:
+
+  use Dancer;
+  use Dancer::Plugin::Facebook;
+  setup_fb;
+
+  get '/a/complicated/facebook/redirect/url' => fb_redirect;
+  get '/a/postback/url/in/a/totally/different/place' => fb_postback '/a/postback/url/in/a/totally/different/place';
+
+Please note, you do need to specify the postback URL as a parameter to
+C<fb_postback>.  It's ugly, but unavoidable as far as I can tell.
+
+=head2 Acting on a user's behalf (while logged in)
+
+If you wish for your application to be able to access Facebook on
+behalf of a particular user while the user is logged in, you simply
+need to additionally configure the permissions the application
+requires (see L<CONFIGURATION> for details).
+
+Then, when the user has authenticated (and accepted your request for
+additional authorization), you may use the C<fb> function to get a
+pre-configured C<Facebook::Graph> object that will allow appropriate
+access:
+
+  use Dancer;
+  use Dancer::Plugin::Facebook;
+  setup_fb '/auth/facebook';
+
+  get '/userinfo' => sub {
+    my $user = fb->fetch ('me');
+  }
+
+=head2 Acting on a user's behalf (offline)
+
+If you wish for your application to be able to access Facebook on
+behalf of a particular user while the user is offline, you will need
+to additionally configure the permissions the application requires
+(see L<CONFIGURATION> for details) to include C<offline_access>
+
+Then, when the user has authenticated (and accepted your request for
+additional authorization), you should make sure to store the
+C<access_token> that the authentication process returned and place it
+in stable storage for later use:
+
+  use Dancer;
+  use Dancer::Plugin::Facebook;
+  setup_fb '/auth/facebook';
+
+  hook fb_access_token_available => sub {
+    my ($token) = @_;
+    ... store $token to DB ---
+  }
 
 =head1 CONFIGURATION
 
@@ -108,6 +172,9 @@ something like this.
       application:
         app_id: XXXXXXXXXXXXXXX
         secret: XXXXXXXXXXXXXXX
+      landing:
+        failure: /error
+        success: /
       permissions:
         - create_event
         - email
@@ -119,14 +186,14 @@ The C<app_id> and C<secret> keys in the C<application> section
 correspond to the values available from L<the information page for your
 application|https://developers.facebook.com/apps>.
 
+The C<failure> and C<success> keys in the C<landing> section point to
+the URL(s) to redirect to upon success or failure in authenticating.
+If they're not present, they both default to C</>.
+
 The C<permissions> key includes a list of additional permissions you
 may request at the time the user authorizes your application.
 Facebook maintains L<a full list of available extended
 permissions|http://developers.facebook.com/docs/authentication/permissions>.
-
-The presence of a C<permissions> list implies the setup of
-authentication.  If an authentication URL is not specified when
-calling C<setup_fb>, it will default to C</auth/facebook>.
 
 =cut
 
@@ -134,26 +201,76 @@ my (%config, $fb);
 
 sub _get_fb {
     debug "Getting fb object [", $fb // "undef", "]";
+
+    # The first time out, turn our raw, local postback URL into a
+    # fully qualified one (see _do_fb_postback for more explanation).
+    if ($config{raw_postback}) {
+        my $url = delete $config{raw_postback};
+        # Place the postback url in $config for object instantiation
+        $config{postback} = uri_for ($url);
+        debug "Full postback URL is ", $config{postback};
+    }
+
+    # We use a before hook to clear a stale FB handle out, and just
+    # use ||= to regenerate as necessary here.
     $fb ||= do {
-        # The first time out, whip up our postback URL
-        if ($config{raw_postback}) {
-            my $url = delete $config{raw_postback};
-            # Place the postback url in $config for object instantiation
-            $config{postback} = uri_for ("$url/postback");
-            debug "Full postback URL is ", $config{postback};
-        }
         my %settings = %config;
         if (my $access_token = session->{auth}->{facebook}) {
             $settings{access_token} = $access_token;
         }
         debug "Creating Facebook::Graph object with settings ", \%settings;
         Facebook::Graph->new (%settings);
+    };
+}
+
+sub _do_fb_redirect () {
+    my $settings = plugin_setting;
+    debug "Settings are ", $settings;
+    # Make sure the permissions settings exist
+    my @permissions = ref $settings->{permissions} eq "ARRAY" ? @{$settings->{permissions}} : ();
+    sub {
+        redirect _get_fb->authorize->extend_permissions (@permissions)->uri_as_string;
     }
 }
 
-register setup_fb => sub {
+sub _do_fb_postback ($) {
+    my $settings = plugin_setting;
+    debug "Settings are ", $settings;
+
     my ($url) = @_;
 
+    # We can only determine the relative URL right now, but that's
+    # enough for initializing the route.  We put the relative URL
+    # in $config{raw_postback} so that when fb is called for the
+    # first time, which will be within a route handler, we can sub
+    # in the full URL, which is what FB actually needs
+    die "You must give me the postback URL when calling fb_postback" unless ($url);
+    $config{raw_postback} = "$url/postback";
+
+    # This hook will get called when we successfully authenticate and have
+    # put the token in the session, so the application developer can
+    # retrieve it.  It doesn't need to exist if a postback route hasn't been
+    # established
+    register_hook (['fb_access_token_available']);
+
+    my $success = $settings->{landing}->{success} || "/";
+    my $failure = $settings->{landing}->{failure} || "/";
+
+    sub {
+        try {
+            my $token = _get_fb->request_access_token (params->{code});
+            session->{auth}->{facebook} = $token->token;
+            execute_hooks 'fb_access_token_available', $token->token;
+            # Go back wherever
+            redirect $success;
+        } catch {
+            redirect $failure;
+        };
+    }
+}
+
+register setup_fb => sub (;$) {
+    my ($url) = @_;
     debug "Setting up fb access";
 
     # We need global access to this, grab it here
@@ -167,60 +284,48 @@ register setup_fb => sub {
         $config{secret} = $settings->{application}->{secret} or die "You didn't give me a secret for Dancer::Plugin::Facebook";
     }
 
-    # If we've a clue we're supposed to be authenticating
-    if ($settings->{permissions} or $url) {
-        die "You must include application info if we're supposed to be authenticating\n" unless %config;
-
-        # If we are expecting to function as a user
-        $settings->{permissions} = [] unless (ref $settings->{permissions} eq "ARRAY");
-
-        # Must have a URI if we're going to auth
-        $url ||= "/auth/facebook";
-
-        debug "Creating handler for ", $url;
-        get $url => sub {
-            redirect _get_fb->authorize
-                            ->extend_permissions (@{$settings->{permissions}})
-                            ->uri_as_string;
-        };
-
-        # This hook will get called when we successfully authenticate and have
-        # put the token in the session, so the application developer can
-        # retrieve it
-        #
-        # FIXME: Change to register_hooks when we move to Dancer >= 1.3097
-        Dancer::Factory::Hook->instance->install_hooks (['fb_access_token_available']);
-
-        # We can't get the full URL yet
-        $config{raw_postback} = "$url/postback";
-
-        debug "Creating handler for ", $config{raw_postback};
-        get $config{raw_postback} => sub {
-            if (my $token = _get_fb->request_access_token (params->{code})) {
-                session->{auth}->{facebook} = $token->token;
-                # FIXME: Change to execute_hooks when we move to Dancer >= 1.3097
-                Dancer::Hook::Factory->instance->execute_hooks ('fb_access_token_available');
-                # Go back wherever
-                redirect '/';
-            }
-        };
-
-        # Clear out old object unless existing tokens in the object
-        # and session match one another.
-        debug "Setting hook to clear facebook context";
-        hook before => sub {
+    # Set a hook to clear out any old object unless existing tokens in
+    # the object and session match one another.  In theory, this means
+    # that absent an access token, we should never replace it.
+    debug "Setting hook to clear facebook context";
+    hook before => sub {
+        if (defined $fb) {
             debug "Considering clearing facebook context";
-            undef $fb unless (defined $fb and
-                              $fb->has_access_token and
-                              defined session->{auth}->{facebook} and
-                              $fb->access_token eq session->{auth}->{facebook});
-        };
+            if (defined session->{auth}->{facebook}) {
+                if ($fb->has_access_token) {
+                    if ($fb->access_token ne session->{auth}->{facebook}) {
+                        debug "Current FB access token doesn't match";
+                        undef $fb;
+                    }
+                } else {
+                    debug "Current FB doesn't have access token";
+                    undef $fb;
+                }
+            } else {
+                if ($fb->has_access_token) {
+                    debug "Current login doesn't have access token";
+                    undef $fb;
+                }
+            }
+        }
+    };
+
+    # If the user wants the automatic URL setup
+    if ($url) {
+        debug "Creating handler for ", $url;
+        get $url => _do_fb_redirect;
+
+        my $postback = "$url/postback";
+        debug "Creating handler for ", $postback;
+        get $postback => _do_fb_postback $postback;
     }
 
     debug "Done setting up fb access";
 };
 
 register fb => \&_get_fb;
+register fb_redirect => \&_do_fb_redirect;
+register fb_postback => \&_do_fb_postback;
 register_plugin;
 
 =head1 SEE ALSO
