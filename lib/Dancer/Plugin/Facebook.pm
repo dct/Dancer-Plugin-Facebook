@@ -1,6 +1,6 @@
 package Dancer::Plugin::Facebook;
 {
-  $Dancer::Plugin::Facebook::VERSION = '0.990';
+  $Dancer::Plugin::Facebook::VERSION = '0.991';
 }
 # ABSTRACT: Manage Facebook interaction within Dancer applications
 
@@ -11,7 +11,7 @@ use Facebook::Graph;
 use Try::Tiny;
 
 
-my (%config, $fb);
+my (%config, $fb, $redirect);
 
 sub _get_fb {
     debug "Getting fb object [", $fb // "undef", "]";
@@ -37,13 +37,20 @@ sub _get_fb {
     };
 }
 
+sub _get_fb_redirect_url () {
+    $redirect ||= do {
+        my $settings = plugin_setting;
+        debug "Settings are ", $settings;
+        my @permissions = ref $settings->{permissions} eq "ARRAY" ? @{$settings->{permissions}} : ();
+        _get_fb->authorize->extend_permissions (@permissions)->uri_as_string;
+    };
+}
+
 sub _do_fb_redirect () {
-    my $settings = plugin_setting;
-    debug "Settings are ", $settings;
-    # Make sure the permissions settings exist
-    my @permissions = ref $settings->{permissions} eq "ARRAY" ? @{$settings->{permissions}} : ();
+    my $url = _get_fb_redirect_url;
     sub {
-        redirect _get_fb->authorize->extend_permissions (@permissions)->uri_as_string;
+        debug "Redirecting to $url";
+        redirect $url, 303;
     }
 }
 
@@ -59,7 +66,7 @@ sub _do_fb_postback ($) {
     # first time, which will be within a route handler, we can sub
     # in the full URL, which is what FB actually needs
     die "You must give me the postback URL when calling fb_postback" unless ($url);
-    $config{raw_postback} = "$url/postback";
+    $config{raw_postback} = $url;
 
     # This hook will get called when we successfully authenticate and have
     # put the token in the session, so the application developer can
@@ -139,6 +146,7 @@ register setup_fb => sub (;$) {
 
 register fb => \&_get_fb;
 register fb_redirect => \&_do_fb_redirect;
+register fb_redirect_url => \&_get_fb_redirect_url;
 register fb_postback => \&_do_fb_postback;
 register_plugin;
 
@@ -154,7 +162,7 @@ Dancer::Plugin::Facebook - Manage Facebook interaction within Dancer application
 
 =head1 VERSION
 
-version 0.990
+version 0.991
 
 =head1 SYNOPSIS
 
@@ -266,6 +274,30 @@ C<fb_redirect> and C<fb_postback> functions to create your routes:
 
   get '/a/complicated/facebook/redirect/url' => fb_redirect;
   get '/a/postback/url/in/a/totally/different/place' => fb_postback '/a/postback/url/in/a/totally/different/place';
+
+Please note, you do need to specify the postback URL as a parameter to
+C<fb_postback>.  It's ugly, but unavoidable as far as I can tell.
+
+=head2 Authenticating users (handling redirection when using AJAX)
+
+If you are using AJAX to interoperate with your application, returning
+a 30X redirect code to push the user to Facebook may not work the way
+you expect.  So, if necessary, you can just get back the appropriate
+URL, and send that to your client in some way it will interpret
+properly.
+
+  use Dancer;
+  use Dancer::Plugin::Facebook;
+
+  setup_fb;
+
+  post '/auth' => sub {
+    ... do some stuff to decide if you are supposed to even hit fb ...
+    # hypothetically encoded as JSON and parsed by client app
+    return {redirect => fb_redirect_url};
+  };
+
+  get '/auth/facebook/postback' => fb_postback '/auth/facebook/postback';
 
 Please note, you do need to specify the postback URL as a parameter to
 C<fb_postback>.  It's ugly, but unavoidable as far as I can tell.

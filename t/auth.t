@@ -26,7 +26,7 @@ route_exists       [GET => '/auth/facebook/postback'], "GET /auth/facebook/postb
 
 my $response = dancer_response GET => '/auth/facebook';
 debug "Response is ", $response;
-is $response->status, 302, "GET /auth/facebook was redirected";
+is $response->status, 303, "GET /auth/facebook was redirected";
 like $response->header ('Location'), qr,^https://graph.facebook.com,, "GET /auth/facebook was redirected to facebook";
 
 done_testing;
