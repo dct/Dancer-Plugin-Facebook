@@ -12,7 +12,7 @@ use Try::Tiny;
   use Dancer;
   use Dancer::Plugin::Facebook;
 
-  setup_fb;
+  setup_fb '/auth/facebook';
 
   get '/' => sub {
     fb->fetch ('16665510298')->{name};
@@ -20,8 +20,8 @@ use Try::Tiny;
 
 =head1 DESCRIPTION
 
-Dancer::Plugin::Facebook is intended to simplify using Facebook::Graph
-from within a Dancer application.
+C<Dancer::Plugin::Facebook> is intended to simplify using
+C<Facebook::Graph> from within a Dancer application.
 
 It will:
 
@@ -29,30 +29,32 @@ It will:
 
 =item manage the lifecycle of the Facebook::Graph object
 
-The Plugin goes to great lengths to only create the Facebook::Graph
-object when needed, and tries hard to cache it as long as it applies.
-So you can use the fb object repeatedly during a request, even in
-different handlers, and be sure that it's not being rebuilt
-needlessly.
+The plugin goes to great lengths to only create the C<Facebook::Graph>
+object when needed, and tries hard to cache it for as long as it it is
+valid, so you can use the fb object repeatedly during a request, even
+in different handlers, without it being rebuilt needlessly.
 
 =item store your applications registration information in a single place
 
 Though it's not required that you have an registered app, if you do,
-you need only record the app_id and secret in one place.
+you need only record the C<app_id> and C<secret> in one place.
 
 =item automatically create routes for handling authentication
 
-If you pass an path to the setup_fb routine, the plugin will create
+If you pass a path to the C<setup_fb> routine, the plugin will create
 the routes necessary to support authentication in that location.
 
 =item automatically manage user authentication tokens
 
 It will transparently manage them through the user session for you,
 collecting them when the user authenticates, and making sure that they
-are used when creating the Facebook::Graph object if they're present.
+are used when creating the C<Facebook::Graph> object if they're present.
 
-There is also a hook available you can use to retrieve and store the
-access_token when it is set.
+There is also a hook available (C<fb_access_token_available>) you can
+use to retrieve and store the C<access_token> for offline use when it
+is set.  Then, simply store the C<access_token> in
+C<session->{auth}->{facebook}> and the C<fb> object will automatically
+pick it up on each request.
 
 =back
 
@@ -60,44 +62,105 @@ access_token when it is set.
 
 =head2 Basic usage
 
-Load the module into your dancer application as you normally would:
+At its absolute most basic usage, you can simply load the module into
+your dancer application:
 
   use Dancer;
   use Dancer::Plugin::Facebook;
 
-This alone will configure the absolute bare minimum functionality,
-allowing you to make requests to Facebook's API for public
-information.
+This will configure the absolute bare minimum functionality, allowing
+you to make requests to Facebook's API for public information and
+nothing else.
 
 =head2 Registered application
 
-If you have registered an application with Facebook, you should
-configure the module to use the relevant C<Application ID> and
-C<Application Secret> (see L<CONFIGURATION> for details), and then
-call C<setup_fb> within your application, like so:
+If you have registered an application with Facebook, you will need to
+configure the module to use the relevant C<app_id> and C<secret> (see
+L<CONFIGURATION> for details), and you will need to call the setup_fb
+routine:
 
   use Dancer;
   use Dancer::Plugin::Facebook;
   setup_fb;
 
-=head2 Authenticating users
+In all other respects, the usage is the same as the basic usage.
 
-If you wish for your application to be able to authenticate users
-using Facebook, you need to specify a point where the necessary web
-routes can be mounted when you call C<setup_fb>, like so:
+=head2 Authenticating users (simple)
+
+If you're using Facebook for authentication, you may specify a point
+where the necessary web routes can be mounted when you call
+C<setup_fb>, like so:
 
   use Dancer;
   use Dancer::Plugin::Facebook;
   setup_fb '/auth/facebook';
 
-=head2 Acting on a user's behalf
+You should configure the module know where to redirect the user in the
+event of success or failure by configuring the C<landing> parameters
+(see L<CONFIGURATION> for details).
 
-If you wish for your application to be able to conncect to Facebook on
-behalf of a particular user, you need to additionally configure the
-permissions the application requires (see L<CONFIGURATION> for
-details).  Doing so implies that you will be L<Authenticating users>
-as well; if you did not specify a mounting point when you called
-C<setup_fb>, it will default to C</auth/facebook>.
+To authenticate a user, simply redirect them to C</auth/facebook>, and
+when the user has been authenticated with Facebook, they will be
+redirected to C<landing/success> (which is C</> by default).
+
+=head2 Authenticating users (more configurable URLs)
+
+If you absolutely need to set specific URLs for the redirection and
+postback pages, you can do this by setting up the routes yourself.
+
+Do not specify a URL when calling C<setup_fb>, and then use the
+C<fb_redirect> and C<fb_postback> functions to create your routes:
+
+  use Dancer;
+  use Dancer::Plugin::Facebook;
+  setup_fb;
+
+  get '/a/complicated/facebook/redirect/url' => fb_redirect;
+  get '/a/postback/url/in/a/totally/different/place' => fb_postback '/a/postback/url/in/a/totally/different/place';
+
+Please note, you do need to specify the postback URL as a parameter to
+C<fb_postback>.  It's ugly, but unavoidable as far as I can tell.
+
+=head2 Acting on a user's behalf (while logged in)
+
+If you wish for your application to be able to access Facebook on
+behalf of a particular user while the user is logged in, you simply
+need to additionally configure the permissions the application
+requires (see L<CONFIGURATION> for details).
+
+Then, when the user has authenticated (and accepted your request for
+additional authorization), you may use the C<fb> function to get a
+pre-configured C<Facebook::Graph> object that will allow appropriate
+access:
+
+  use Dancer;
+  use Dancer::Plugin::Facebook;
+  setup_fb '/auth/facebook';
+
+  get '/userinfo' => sub {
+    my $user = fb->fetch ('me');
+  }
+
+=head2 Acting on a user's behalf (offline)
+
+If you wish for your application to be able to access Facebook on
+behalf of a particular user while the user is offline, you will need
+to additionally configure the permissions the application requires
+(see L<CONFIGURATION> for details) to include C<offline_access>
+
+Then, when the user has authenticated (and accepted your request for
+additional authorization), you should make sure to store the
+C<access_token> that the authentication process returned and place it
+in stable storage for later use:
+
+  use Dancer;
+  use Dancer::Plugin::Facebook;
+  setup_fb '/auth/facebook';
+
+  hook fb_access_token_available => sub {
+    my ($token) = @_;
+    ... store $token to DB ---
+  }
 
 =head1 CONFIGURATION
 
@@ -109,6 +172,9 @@ something like this.
       application:
         app_id: XXXXXXXXXXXXXXX
         secret: XXXXXXXXXXXXXXX
+      landing:
+        failure: /error
+        success: /
       permissions:
         - create_event
         - email
@@ -120,14 +186,14 @@ The C<app_id> and C<secret> keys in the C<application> section
 correspond to the values available from L<the information page for your
 application|https://developers.facebook.com/apps>.
 
+The C<failure> and C<success> keys in the C<landing> section point to
+the URL(s) to redirect to upon success or failure in authenticating.
+If they're not present, they both default to C</>.
+
 The C<permissions> key includes a list of additional permissions you
 may request at the time the user authorizes your application.
 Facebook maintains L<a full list of available extended
 permissions|http://developers.facebook.com/docs/authentication/permissions>.
-
-The presence of a C<permissions> list implies the setup of
-authentication.  If an authentication URL is not specified when
-calling C<setup_fb>, it will default to C</auth/facebook>.
 
 =cut
 
