@@ -53,7 +53,7 @@ are used when creating the C<Facebook::Graph> object if they're present.
 There is also a hook available (C<fb_access_token_available>) you can
 use to retrieve and store the C<access_token> for offline use when it
 is set.  Then, simply store the C<access_token> in
-C<session->{auth}->{facebook}> and the C<fb> object will automatically
+C<session->{fb_token}> and the C<fb> object will automatically
 pick it up on each request.
 
 =back
@@ -239,7 +239,7 @@ sub _get_fb {
     # use ||= to regenerate as necessary here.
     $fb ||= do {
         my %settings = %config;
-        if (my $access_token = session->{auth}->{facebook}) {
+        if (my $access_token = session->{fb_token}) {
             $settings{access_token} = $access_token;
         }
         debug "Creating Facebook::Graph object with settings ", \%settings;
@@ -257,8 +257,8 @@ sub _get_fb_redirect_url () {
 }
 
 sub _do_fb_redirect () {
-    my $url = _get_fb_redirect_url;
     sub {
+        my $url = _get_fb_redirect_url;
         debug "Redirecting to $url";
         redirect $url, 303;
     }
@@ -282,7 +282,7 @@ sub _do_fb_postback ($) {
     # put the token in the session, so the application developer can
     # retrieve it.  It doesn't need to exist if a postback route hasn't been
     # established
-    register_hook (['fb_access_token_available']);
+    register_hook 'fb_access_token_available';
 
     my $success = $settings->{landing}->{success} || "/";
     my $failure = $settings->{landing}->{failure} || "/";
@@ -290,11 +290,12 @@ sub _do_fb_postback ($) {
     sub {
         try {
             my $token = _get_fb->request_access_token (params->{code});
-            session->{auth}->{facebook} = $token->token;
-            execute_hooks 'fb_access_token_available', $token->token;
+            session 'fb_token' => $token->token;
+            execute_hook 'fb_access_token_available', $token->token;
             # Go back wherever
             redirect $success;
         } catch {
+            debug "Failed to authenticate with Facebook: $_";
             redirect $failure;
         };
     }
@@ -322,9 +323,9 @@ register setup_fb => sub (;$) {
     hook before => sub {
         if (defined $fb) {
             debug "Considering clearing facebook context";
-            if (defined session->{auth}->{facebook}) {
+            if (defined session->{fb_token}) {
                 if ($fb->has_access_token) {
-                    if ($fb->access_token ne session->{auth}->{facebook}) {
+                    if ($fb->access_token ne session->{fb_token}) {
                         debug "Current FB access token doesn't match";
                         undef $fb;
                     }
