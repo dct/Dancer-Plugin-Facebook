@@ -53,7 +53,7 @@ are used when creating the C<Facebook::Graph> object if they're present.
 There is also a hook available (C<fb_access_token_available>) you can
 use to retrieve and store the C<access_token> for offline use when it
 is set.  Then, simply store the C<access_token> in
-C<session->{auth}->{facebook}> and the C<fb> object will automatically
+C<< session->{auth}->{facebook} >> and the C<fb> object will automatically
 pick it up on each request.
 
 =back
