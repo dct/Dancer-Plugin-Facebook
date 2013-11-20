@@ -53,7 +53,7 @@ are used when creating the C<Facebook::Graph> object if they're present.
 There is also a hook available (C<fb_access_token_available>) you can
 use to retrieve and store the C<access_token> for offline use when it
 is set.  Then, simply store the C<access_token> in
-C<session->{auth}->{facebook}> and the C<fb> object will automatically
+C<< session->{auth}->{facebook} >> and the C<fb> object will automatically
 pick it up on each request.
 
 =back
@@ -257,8 +257,8 @@ sub _get_fb_redirect_url () {
 }
 
 sub _do_fb_redirect () {
-    my $url = _get_fb_redirect_url;
     sub {
+        my $url = _get_fb_redirect_url;
         debug "Redirecting to $url";
         redirect $url, 303;
     }
@@ -282,7 +282,7 @@ sub _do_fb_postback ($) {
     # put the token in the session, so the application developer can
     # retrieve it.  It doesn't need to exist if a postback route hasn't been
     # established
-    register_hook (['fb_access_token_available']);
+    register_hook 'fb_access_token_available';
 
     my $success = $settings->{landing}->{success} || "/";
     my $failure = $settings->{landing}->{failure} || "/";
@@ -291,7 +291,7 @@ sub _do_fb_postback ($) {
         try {
             my $token = _get_fb->request_access_token (params->{code});
             session->{auth}->{facebook} = $token->token;
-            execute_hooks 'fb_access_token_available', $token->token;
+            execute_hook 'fb_access_token_available', $token->token;
             # Go back wherever
             redirect $success;
         } catch {
